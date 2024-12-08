@@ -1,7 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?><xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-   xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xd="http://www.oxygenxml.com/ns/doc/xsl"
-   xmlns="http://www.tei-c.org/ns/1.0" xmlns:tei="http://www.tei-c.org/ns/1.0"
-   xmlns:p="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"
+<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet
+   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+   xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+   xmlns:xd="http://www.oxygenxml.com/ns/doc/xsl"
+   xmlns="http://www.tei-c.org/ns/1.0"
+   xmlns:tei="http://www.tei-c.org/ns/1.0"
+   xmlns:p="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
    xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:map="http://www.w3.org/2005/xpath-functions/map" xmlns:local="local"
    xmlns:xstring="https://github.com/dariok/XStringUtils" exclude-result-prefixes="#all"
@@ -68,7 +72,10 @@
          default) or whether to discard them (false()).</xd:desc>
    </xd:doc>
    <xsl:param name="unknownAttributes" select="true()" />
-
+   <xd:doc>
+     <xd:desc>Title of the document</xd:desc>
+    </xd:doc>
+  <xsl:param name="title" as="xs:string" />
    <xd:doc scope="stylesheet">
       <xd:desc>
          <xd:p><xd:b>Author:</xd:b> Dario Kampkaspar, dario.kampkaspar@oeaw.ac.at |
@@ -115,7 +122,7 @@
    </xd:doc>
    <xsl:variable name="make_div">
       <div>
-         <xsl:apply-templates select="//mets:fileSec//mets:fileGrp[@ID = 'PAGEXML']/mets:file" mode="text" />
+         <xsl:apply-templates select="//mets:fileGrp[@ID = 'PAGEXML' or @USE='export']/mets:file" mode="text" />
       </div>
    </xsl:variable>
    
@@ -133,6 +140,7 @@
                <xsl:text>
          </xsl:text>
                <titleStmt>
+                  <xsl:value-of select="$title"/>
                   <xsl:apply-templates select="mets:amdSec" mode="titleStmt"/>
                </titleStmt>
                <xsl:text>
@@ -170,12 +178,12 @@
             <xsl:choose>
                <xsl:when test="$bounding-rectangles">
                   <xsl:variable name="facs">
-                     <xsl:apply-templates select="mets:fileSec//mets:fileGrp[@ID = 'PAGEXML']/mets:file" mode="facsimile"/>
+                     <xsl:apply-templates select="//mets:fileGrp[@ID = 'PAGEXML' or @USE='export']/mets:file" mode="facsimile"/>
                   </xsl:variable>
                   <xsl:apply-templates select="$facs" mode="bounding-rectangle" />
                </xsl:when>
                <xsl:otherwise>
-                  <xsl:apply-templates select="mets:fileSec//mets:fileGrp[@ID = 'PAGEXML']/mets:file" mode="facsimile"/>
+                  <xsl:apply-templates select="//mets:fileGrp[@ID = 'PAGEXML' or @USE='export']/mets:file" mode="facsimile"/>
                </xsl:otherwise>
             </xsl:choose>
             <xsl:text>
@@ -371,7 +379,16 @@
    </xd:doc>
    <xsl:template match="mets:file" mode="facsimile">
       <xsl:variable name="file" select="document(mets:FLocat/@xlink:href, /)"/>
-      <xsl:variable name="numCurr" select="@SEQ"/>
+      <xsl:variable name="numCurr">
+         <xsl:choose>
+            <xsl:when test="@SEQ">
+               <xsl:value-of select="@SEQ"/>
+            </xsl:when>
+            <xsl:otherwise>
+               <xsl:number count="mets:file" level="any" from="mets:fileGrp"/>
+            </xsl:otherwise>
+         </xsl:choose>
+      </xsl:variable>
 
       <xsl:apply-templates select="$file//p:Page" mode="facsimile">
          <xsl:with-param name="imageName" select="substring-after(mets:FLocat/@xlink:href, '/')"/>
@@ -384,7 +401,16 @@
    </xd:doc>
    <xsl:template match="mets:file" mode="text">
       <xsl:variable name="file" select="document(mets:FLocat/@xlink:href, .)"/>
-      <xsl:variable name="numCurr" select="@SEQ"/>
+      <xsl:variable name="numCurr">
+         <xsl:choose>
+            <xsl:when test="@SEQ">
+               <xsl:value-of select="@SEQ"/>
+            </xsl:when>
+            <xsl:otherwise>
+               <xsl:number count="mets:file" level="any" from="mets:fileGrp"/>
+            </xsl:otherwise>
+         </xsl:choose>
+      </xsl:variable>
 
       <xsl:apply-templates select="$file//p:Page" mode="text">
          <xsl:with-param name="numCurr" select="$numCurr" tunnel="true"/>
@@ -561,7 +587,19 @@
       <xsl:param name="center" tunnel="true" as="xs:double"/>
       
       <xsl:variable name="custom" as="map(*)">
-         <xsl:apply-templates select="@custom"/>
+         <xsl:choose>
+            <xsl:when test="@custom">
+               <xsl:apply-templates select="@custom"/>   
+            </xsl:when>
+            <xsl:otherwise>
+               <xsl:map>
+                  <xsl:map-entry key="'structure'" select="map:entry('test', '')"/>   
+               </xsl:map>
+            </xsl:otherwise>
+         </xsl:choose>
+         <xsl:if test="@custom">
+               
+         </xsl:if>
       </xsl:variable>
       <xsl:variable name="regionType" as="xs:string*" select="(@type, $custom?structure?type)" />
 
@@ -862,7 +900,7 @@
          <xsl:text>
                </xsl:text>
          <lb facs="#facs_{$numCurr}_{@id}">
-            <xsl:if test="@custom">
+            <xsl:if test="@custom[matches(., 'index:')]">
                <xsl:variable name="pos"
                   select="xs:integer(substring-before(substring-after(@custom, 'index:'), ';')) + 1"/>
                <xsl:attribute name="n">
